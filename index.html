@@ -153,17 +153,49 @@
                     <textarea id="promptText" class="form-control" rows="2">What are the key conclusions of this document?</textarea>
                 </div>
 
-                <div class="d-flex gap-2 align-items-center mb-3">
-                    <button id="sendBtn" class="btn btn-primary btn-lg px-5">
-                        <span id="btnText">Executar Teste</span>
-                        <span class="spinner-border spinner-border-sm loading-spinner" id="btnLoader" role="status"></span>
-                    </button>
-                    <div id="statusIndicator" class="ms-auto"></div>
+                <div class="row align-items-end mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Nº de Requisições</label>
+                        <input type="number" id="batchCount" class="form-control" value="1" min="1" max="50">
+                    </div>
+                    <div class="col-md-9">
+                        <div class="d-flex gap-2 align-items-center">
+                            <button id="sendBtn" class="btn btn-primary btn-lg flex-grow-1">
+                                <span id="btnText">Executar Teste</span>
+                                <span class="spinner-border spinner-border-sm loading-spinner" id="btnLoader" role="status"></span>
+                            </button>
+                            <div id="statusIndicator" class="ms-auto"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <hr>
 
-                <!-- Resultados -->
+                <!-- Resultado do Lote (Agregado) -->
+                <div id="batchResultContainer" class="mb-4" style="display:none;">
+                    <div class="card bg-dark text-white p-3">
+                        <h5 class="text-info">Resumo do Lote (Batch)</h5>
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <div class="h3 mb-0" id="batchHitRate">0%</div>
+                                <small class="text-opacity-75">Cache Hit Rate</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="h3 mb-0 text-success" id="batchTokensSaved">0</div>
+                                <small class="text-opacity-75">Tokens Economizados</small>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="h3 mb-0" id="batchTotalReqs">0/0</div>
+                                <small class="text-opacity-75">Sucesso/Total</small>
+                            </div>
+                        </div>
+                        <div class="progress mt-3" style="height: 10px;">
+                            <div id="batchProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultados Individuais -->
                 <div id="resultContainer" style="display:none;">
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -207,6 +239,13 @@
     const saveCacheBtn = document.getElementById('saveCacheBtn');
     const clearCacheBtn = document.getElementById('clearCacheBtn');
     
+    // Elementos Batch
+    const batchResultContainer = document.getElementById('batchResultContainer');
+    const batchHitRate = document.getElementById('batchHitRate');
+    const batchTokensSaved = document.getElementById('batchTokensSaved');
+    const batchTotalReqs = document.getElementById('batchTotalReqs');
+    const batchProgressBar = document.getElementById('batchProgressBar');
+
     const CACHE_KEY = 'gemini_config_cache';
 
     function saveToCache() {
@@ -218,6 +257,7 @@
             fileUri: document.getElementById('fileUri').value,
             mimeType: document.getElementById('mimeType').value,
             promptText: document.getElementById('promptText').value,
+            batchCount: document.getElementById('batchCount').value,
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(config));
         
@@ -242,6 +282,7 @@
                 if (config.fileUri) document.getElementById('fileUri').value = config.fileUri;
                 if (config.mimeType) document.getElementById('mimeType').value = config.mimeType;
                 if (config.promptText) document.getElementById('promptText').value = config.promptText;
+                if (config.batchCount) document.getElementById('batchCount').value = config.batchCount;
             } catch (e) {
                 console.error("Erro ao carregar cache:", e);
             }
@@ -258,6 +299,7 @@
             document.getElementById('fileUri').value = '';
             document.getElementById('mimeType').value = 'application/pdf';
             document.getElementById('promptText').value = '';
+            document.getElementById('batchCount').value = '1';
             
             const originalText = clearCacheBtn.textContent;
             clearCacheBtn.textContent = 'Limpo!';
@@ -292,6 +334,63 @@
     // Função de sleep para o backoff exponencial
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+    async function handleBatchRequest() {
+        const count = parseInt(document.getElementById('batchCount').value) || 1;
+        setLoading(true);
+        
+        let successCount = 0;
+        let totalCacheTokens = 0;
+        let hits = 0;
+
+        if (count > 1) {
+            batchResultContainer.style.display = 'block';
+            updateBatchUI(0, count, 0, 0);
+        } else {
+            batchResultContainer.style.display = 'none';
+        }
+
+        for (let i = 0; i < count; i++) {
+            // Indica qual requisição está a ser processada
+            statusIndicator.innerHTML = `<span class="badge bg-secondary status-badge">A processar ${i + 1}/${count}...</span>`;
+            
+            try {
+                const data = await makeRequest();
+                successCount++;
+                
+                const cacheTokens = data.usageMetadata?.cachedContentTokenCount || 0;
+                totalCacheTokens += cacheTokens;
+                if (cacheTokens > 0) hits++;
+            } catch (error) {
+                console.error(`Erro na requisição ${i + 1}:`, error);
+                if (count === 1) {
+                    showError(error.message);
+                    setLoading(false);
+                    return;
+                }
+            }
+            
+            // Atualiza progresso sempre, mesmo em caso de erro na requisição individual
+            if (count > 1) {
+                updateBatchUI(i + 1, count, hits, totalCacheTokens);
+            }
+        }
+        
+        setLoading(false);
+        if (count > 1) {
+            statusIndicator.innerHTML = `<span class="badge bg-success status-badge">Concluído (${successCount}/${count} OK)</span>`;
+        }
+    }
+
+    function updateBatchUI(current, total, hits, tokens) {
+        const percent = Math.round((current / total) * 100);
+        const hitRate = current > 0 ? Math.round((hits / current) * 100) : 0;
+        
+        batchProgressBar.style.width = `${percent}%`;
+        batchHitRate.textContent = `${hitRate}%`;
+        batchTokensSaved.textContent = tokens.toLocaleString();
+        batchTotalReqs.textContent = `${current}/${total}`;
+    }
+
     async function makeRequest(retryCount = 0) {
         const projectId = document.getElementById('projectId').value;
         const locationId = document.getElementById('locationId').value.toLowerCase();
@@ -302,8 +401,7 @@
         const prompt = document.getElementById('promptText').value;
 
         if (!token) {
-            showError("Por favor, introduza o Bearer Token de acesso.");
-            return;
+            throw new Error("Por favor, introduza o Bearer Token de acesso.");
         }
 
         const host = locationId === 'global' ? 'aiplatform.googleapis.com' : `${locationId}-aiplatform.googleapis.com`;
@@ -331,37 +429,32 @@
             }
         };
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
 
-            if ((response.status === 429 || response.status >= 500) && retryCount < 5) {
-                const waitTime = Math.pow(2, retryCount) * 1000;
-                await sleep(waitTime);
-                return makeRequest(retryCount + 1);
-            }
-
-            const data = await response.json();
-            rawResponse.textContent = JSON.stringify(data, null, 2);
-
-            if (!response.ok) {
-                throw new Error(data.error?.message || `Erro ${response.status}: ${response.statusText}`);
-            }
-
-            displayResult(data);
-        } catch (error) {
-            showError(error.message);
-        } finally {
-            if (retryCount === 0 || !retryCount) {
-                 setLoading(false);
-            }
+        if ((response.status === 429 || response.status >= 500) && retryCount < 5) {
+            const waitTime = Math.pow(2, retryCount) * 1000;
+            await sleep(waitTime);
+            return makeRequest(retryCount + 1);
         }
+
+        const data = await response.json();
+        
+        // Só atualiza os campos individuais se não for um teste em lote grande ou se for o último
+        rawResponse.textContent = JSON.stringify(data, null, 2);
+
+        if (!response.ok) {
+            throw new Error(data.error?.message || `Erro ${response.status}: ${response.statusText}`);
+        }
+
+        displayResult(data);
+        return data;
     }
 
     function setLoading(isLoading) {
@@ -371,7 +464,7 @@
         if (isLoading) {
             resultContainer.style.display = "none";
             errorContainer.style.display = "none";
-            statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge">A enviar...</span>';
+            statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge">A processar...</span>';
         }
     }
 
@@ -404,8 +497,7 @@
     }
 
     sendBtn.addEventListener('click', () => {
-        setLoading(true);
-        makeRequest();
+        handleBatchRequest();
     });
 
 </script>
