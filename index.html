@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Internal Cache Tester</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-section {
+            background: #000; /* Banner preto */
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 25px 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .gemini-logo {
+            width: 180px; /* Tamanho ajustado para o logo PNG */
+            height: auto;
+            margin-bottom: 1rem;
+        }
+        pre {
+            background-color: #212529;
+            color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+        .status-badge {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .usage-metric {
+            border-left: 4px solid #4285f4;
+            padding-left: 10px;
+            margin-bottom: 10px;
+        }
+        code {
+            background-color: #eee;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-section text-center">
+    <!-- Logo do Gemini PNG -->
+    <img src="https://freepnglogo.com/images/all_img/1728457808_Logo_Gemini_PNG.png" alt="Gemini Logo" class="gemini-logo">
+    <h1>Gemini Implicit Cache Tester</h1>
+    <p class="lead opacity-75">Interface de teste para modelos Gemini no Vertex AI</p>
+</div>
+
+<div class="container mb-5">
+    <div class="row g-4">
+        <!-- Configurações -->
+        <div class="col-lg-4">
+            <div class="card h-100 p-4">
+                <h4 class="mb-3">Configuração</h4>
+                
+                <div class="mb-3">
+                    <label class="form-label">Project ID</label>
+                    <input type="text" id="projectId" class="form-control" placeholder="Ex: project-poc-purple" value="project-poc-purple">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Location</label>
+                    <select id="locationId" class="form-select">
+                        <option value="global" selected>global</option>
+                        <option value="us-central1">us-central1 (Iowa)</option>
+                        <option value="us-east4">us-east4 (N. Virginia)</option>
+                        <option value="europe-west1">europe-west1 (Belgium)</option>
+                        <option value="europe-west4">europe-west4 (Netherlands)</option>
+                        <option value="asia-northeast1">asia-northeast1 (Tokyo)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Model ID</label>
+                    <select id="modelId" class="form-select">
+                        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview)</option>
+                        <option value="gemini-3-flash-preview" selected>Gemini 3 Flash (Preview)</option>
+                        <option value="gemini-3-pro-preview">Gemini 3 Pro (Preview)</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-flash-lite-preview-09-2025">Gemini 2.5 Flash Lite (Preview 09-2025)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Bearer Token</label>
+                    <textarea id="accessToken" class="form-control" rows="3" placeholder="Cole o resultado do comando gcloud"></textarea>
+                    <div class="d-flex align-items-center mt-1">
+                        <small class="text-muted">Hint: Obtenha um token em um terminal autenticado: <code id="gcloudCommand">gcloud auth print-access-token</code></small>
+                        <button class="btn btn-sm btn-link p-0 ms-2" onclick="copyGcloudCommand()" title="Copiar comando">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-copy" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button id="saveCacheBtn" class="btn btn-outline-success btn-sm">Salvar no Cache</button>
+                    <button id="clearCacheBtn" class="btn btn-outline-danger btn-sm">Limpar Configurações</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Corpo da Requisição -->
+        <div class="col-lg-8">
+            <div class="card p-4">
+                <h4 class="mb-3">Parâmetros da Requisição</h4>
+                
+                <div class="row">
+                    <div class="col-md-7 mb-3">
+                        <label class="form-label">File URI (GS Path)</label>
+                        <input type="text" id="fileUri" class="form-control" value="gs://cloud-samples-data/generative-ai/pdf/2312.11805v3.pdf">
+                    </div>
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">Tipo de Ficheiro (MIME)</label>
+                        <select id="mimeType" class="form-select">
+                            <option value="application/pdf" selected>Documento (PDF)</option>
+                            <option value="image/jpeg">Imagem (JPEG)</option>
+                            <option value="image/png">Imagem (PNG)</option>
+                            <option value="video/mp4">Vídeo (MP4)</option>
+                            <option value="text/plain">Texto (TXT)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Prompt (Texto do Utilizador)</label>
+                    <textarea id="promptText" class="form-control" rows="2">What are the key conclusions of this document?</textarea>
+                </div>
+
+                <div class="d-flex gap-2 align-items-center mb-3">
+                    <button id="sendBtn" class="btn btn-primary btn-lg px-5">
+                        <span id="btnText">Executar Teste</span>
+                        <span class="spinner-border spinner-border-sm loading-spinner" id="btnLoader" role="status"></span>
+                    </button>
+                    <div id="statusIndicator" class="ms-auto"></div>
+                </div>
+
+                <hr>
+
+                <!-- Resultados -->
+                <div id="resultContainer" style="display:none;">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h5>Métricas de Uso</h5>
+                            <div id="metrics" class="bg-light p-3 rounded h-100">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Resposta do Modelo</h5>
+                            <div id="modelText" class="p-3 border rounded bg-white italic h-100">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>JSON da Resposta (Recebido)</h5>
+                            <pre id="rawResponse"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorContainer" class="alert alert-danger" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sendBtn = document.getElementById('sendBtn');
+    const btnText = document.getElementById('btnText');
+    const btnLoader = document.getElementById('btnLoader');
+    const resultContainer = document.getElementById('resultContainer');
+    const errorContainer = document.getElementById('errorContainer');
+    const rawResponse = document.getElementById('rawResponse');
+    const modelText = document.getElementById('modelText');
+    const metricsDiv = document.getElementById('metrics');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const saveCacheBtn = document.getElementById('saveCacheBtn');
+    const clearCacheBtn = document.getElementById('clearCacheBtn');
+    
+    const CACHE_KEY = 'gemini_config_cache';
+
+    function saveToCache() {
+        const config = {
+            projectId: document.getElementById('projectId').value,
+            locationId: document.getElementById('locationId').value,
+            modelId: document.getElementById('modelId').value,
+            accessToken: document.getElementById('accessToken').value,
+            fileUri: document.getElementById('fileUri').value,
+            mimeType: document.getElementById('mimeType').value,
+            promptText: document.getElementById('promptText').value,
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(config));
+        
+        const originalText = saveCacheBtn.textContent;
+        saveCacheBtn.textContent = 'Salvo!';
+        saveCacheBtn.classList.replace('btn-outline-success', 'btn-success');
+        setTimeout(() => {
+            saveCacheBtn.textContent = originalText;
+            saveCacheBtn.classList.replace('btn-success', 'btn-outline-success');
+        }, 2000);
+    }
+
+    function loadFromCache() {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            try {
+                const config = JSON.parse(cached);
+                if (config.projectId) document.getElementById('projectId').value = config.projectId;
+                if (config.locationId) document.getElementById('locationId').value = config.locationId;
+                if (config.modelId) document.getElementById('modelId').value = config.modelId;
+                if (config.accessToken) document.getElementById('accessToken').value = config.accessToken;
+                if (config.fileUri) document.getElementById('fileUri').value = config.fileUri;
+                if (config.mimeType) document.getElementById('mimeType').value = config.mimeType;
+                if (config.promptText) document.getElementById('promptText').value = config.promptText;
+            } catch (e) {
+                console.error("Erro ao carregar cache:", e);
+            }
+        }
+    }
+
+    function clearCache() {
+        if (confirm("Tem certeza que deseja limpar as configurações salvas? Isso também limpará os campos.")) {
+            localStorage.removeItem(CACHE_KEY);
+            document.getElementById('projectId').value = '';
+            document.getElementById('locationId').value = 'global';
+            document.getElementById('modelId').value = 'gemini-3-flash-preview';
+            document.getElementById('accessToken').value = '';
+            document.getElementById('fileUri').value = '';
+            document.getElementById('mimeType').value = 'application/pdf';
+            document.getElementById('promptText').value = '';
+            
+            const originalText = clearCacheBtn.textContent;
+            clearCacheBtn.textContent = 'Limpo!';
+            clearCacheBtn.classList.replace('btn-outline-danger', 'btn-danger');
+            setTimeout(() => {
+                clearCacheBtn.textContent = originalText;
+                clearCacheBtn.classList.replace('btn-danger', 'btn-outline-danger');
+            }, 2000);
+        }
+    }
+
+    // Carregar cache ao iniciar
+    window.addEventListener('DOMContentLoaded', loadFromCache);
+
+    saveCacheBtn.addEventListener('click', saveToCache);
+    clearCacheBtn.addEventListener('click', clearCache);
+
+    function copyGcloudCommand() {
+        const command = document.getElementById('gcloudCommand').innerText;
+        navigator.clipboard.writeText(command).then(() => {
+            const btn = event.currentTarget;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#198754" class="bi bi-check" viewBox="0 0 16 16"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        }).catch(err => {
+            console.error('Falha ao copiar:', err);
+        });
+    }
+
+    // Função de sleep para o backoff exponencial
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function makeRequest(retryCount = 0) {
+        const projectId = document.getElementById('projectId').value;
+        const locationId = document.getElementById('locationId').value.toLowerCase();
+        const modelId = document.getElementById('modelId').value;
+        const token = document.getElementById('accessToken').value.trim();
+        const fileUri = document.getElementById('fileUri').value;
+        const mimeType = document.getElementById('mimeType').value;
+        const prompt = document.getElementById('promptText').value;
+
+        if (!token) {
+            showError("Por favor, introduza o Bearer Token de acesso.");
+            return;
+        }
+
+        const host = locationId === 'global' ? 'aiplatform.googleapis.com' : `${locationId}-aiplatform.googleapis.com`;
+        const url = `https://${host}/v1/projects/${projectId}/locations/${locationId}/publishers/google/models/${modelId}:generateContent`;
+
+        const requestBody = {
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        { text: prompt },
+                        {
+                            fileData: {
+                                mimeType: mimeType,
+                                fileUri: fileUri
+                            }
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                maxOutputTokens: 256,
+                temperature: 1,
+                topP: 0.95,
+            }
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if ((response.status === 429 || response.status >= 500) && retryCount < 5) {
+                const waitTime = Math.pow(2, retryCount) * 1000;
+                await sleep(waitTime);
+                return makeRequest(retryCount + 1);
+            }
+
+            const data = await response.json();
+            rawResponse.textContent = JSON.stringify(data, null, 2);
+
+            if (!response.ok) {
+                throw new Error(data.error?.message || `Erro ${response.status}: ${response.statusText}`);
+            }
+
+            displayResult(data);
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            if (retryCount === 0 || !retryCount) {
+                 setLoading(false);
+            }
+        }
+    }
+
+    function setLoading(isLoading) {
+        sendBtn.disabled = isLoading;
+        btnText.style.opacity = isLoading ? "0" : "1";
+        btnLoader.style.display = isLoading ? "inline-block" : "none";
+        if (isLoading) {
+            resultContainer.style.display = "none";
+            errorContainer.style.display = "none";
+            statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge">A enviar...</span>';
+        }
+    }
+
+    function showError(msg) {
+        errorContainer.textContent = msg;
+        errorContainer.style.display = "block";
+        statusIndicator.innerHTML = '<span class="badge bg-danger status-badge">Erro</span>';
+    }
+
+    function displayResult(data) {
+        resultContainer.style.display = "block";
+        
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        modelText.textContent = parts.map(p => p.text).join('') || "(Sem resposta de texto)";
+
+        const usage = data.usageMetadata || {};
+        const cacheTokens = usage.cachedContentTokenCount || 0;
+        
+        metricsDiv.innerHTML = `
+            <div class="usage-metric"><strong>Total Tokens:</strong> ${usage.totalTokenCount || 0}</div>
+            <div class="usage-metric"><strong>Prompt Tokens:</strong> ${usage.promptTokenCount || 0}</div>
+            <div class="usage-metric"><strong>Response Tokens:</strong> ${usage.candidatesTokenCount || 0}</div>
+            <div class="usage-metric text-primary">
+                <strong>Cache Tokens:</strong> ${cacheTokens}
+                ${cacheTokens > 0 ? ' <span class="badge bg-success">Cache Hit!</span>' : ' <span class="badge bg-warning text-dark">Miss</span>'}
+            </div>
+        `;
+
+        statusIndicator.innerHTML = '<span class="badge bg-success status-badge">Sucesso</span>';
+    }
+
+    sendBtn.addEventListener('click', () => {
+        setLoading(true);
+        makeRequest();
+    });
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
