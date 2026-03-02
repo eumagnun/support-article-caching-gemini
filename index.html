@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini Internal Cache Tester</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
         body {
             background-color: #f8f9fa;
@@ -59,6 +60,18 @@
             border-radius: 4px;
             color: #d63384;
         }
+        @keyframes shimmer {
+            0% { transform: rotate(0deg) scale(1); opacity: 0.8; }
+            50% { transform: rotate(10deg) scale(1.1); opacity: 1; }
+            100% { transform: rotate(0deg) scale(1); opacity: 0.8; }
+        }
+        .elegant-icon {
+            animation: shimmer 4s infinite ease-in-out;
+            display: inline-block;
+        }
+        .bg-gemini-gradient {
+            background: linear-gradient(135deg, #1a73e8 0%, #d63384 100%);
+        }
     </style>
 </head>
 <body>
@@ -78,10 +91,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="mb-0">Parâmetros da Requisição</h4>
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-fill me-1" viewBox="0 0 16 16">
-                            <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
-                        </svg>
-                        Configurações
+                        <i class="bi bi-gear-fill me-1"></i> Configurações
                     </button>
                 </div>
                 
@@ -178,34 +188,47 @@
                 <div id="errorContainer" class="alert alert-danger" style="display:none;"></div>
             </div>
 
-            <!-- Informações sobre Implicit Cache (Agora fora do modal, abaixo da tela principal) -->
+            <!-- Informações sobre Implicit Cache -->
             <div class="mt-4">
-                <div class="card p-4 border-0 shadow-sm" style="background-color: #e3f2fd;">
+                <div class="card p-4 border-0 shadow-sm" style="background-color: #f1f7ff; border-left: 5px solid #1a73e8 !important;">
                     <div class="d-flex align-items-center mb-3">
-                        <div class="bg-primary text-white rounded-circle p-2 me-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-lightning-fill" viewBox="0 0 16 16">
-                                <path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641l2.5-8.5z"/>
-                            </svg>
+                        <div class="bg-gemini-gradient text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
+                            <i class="bi bi-stars elegant-icon" style="font-size: 1.4rem;"></i>
                         </div>
-                        <h4 class="mb-0 text-primary">Sobre Implicit Cache</h4>
+                        <h4 class="mb-0 fw-bold" style="color: #1a73e8;">Sobre Context Caching</h4>
                     </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <h6><i class="bi bi-speedometer2 me-2"></i>Threshold</h6>
-                            <p class="small mb-0">Ativado automaticamente para prompts com <strong>mais de 32,768 tokens</strong>.</p>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-dark fw-bold"><i class="bi bi-speedometer2 me-2"></i>Token Limits (Min. Cache)</h6>
+                            <ul class="small mb-0">
+                                <li><strong>Gemini 3 & 3.1:</strong> 4,096 tokens</li>
+                                <li><strong>Gemini 2.0 & 2.5:</strong> 2,048 tokens</li>
+                            </ul>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <h6><i class="bi bi-cpu me-2"></i>Modelos Suportados</h6>
-                            <p class="small mb-0">Familias Gemini 2.5, 3 e 3.1</p>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <h6><i class="bi bi-clock-history me-2"></i>TTL (Atividade)</h6>
-                            <p class="small mb-0">Mantido enquanto houver atividade. Expira após ~30-60 minutos de inatividade.</p>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-dark fw-bold"><i class="bi bi-file-earmark-arrow-up me-2"></i>Maximum Size</h6>
+                            <p class="small mb-0">Até <strong>10 MB</strong> para conteúdo via blob ou texto.</p>
                         </div>
                     </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-dark fw-bold"><i class="bi bi-clock-history me-2"></i>Duração (TTL)</h6>
+                            <ul class="small mb-0">
+                                <li><strong>Mínimo:</strong> 1 minuto</li>
+                                <li><strong>Máximo:</strong> Sem limite máximo definido</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 mb-3 text-warning-emphasis">
+                            <h6 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Importante (GCS)</h6>
+                            <p class="small mb-0">Não altere objetos no Cloud Storage enquanto estiverem no cache. Mudanças podem invalidar o conteúdo cacheado.</p>
+                        </div>
+                    </div>
+
                     <hr class="my-3 opacity-10">
                     <div class="d-flex justify-content-between align-items-center">
-                        <p class="small mb-0 text-muted">Reduz latência e custo ao reutilizar o contexto processado em requisições idênticas.</p>
+                        <p class="small mb-0 text-muted">Reduz significativamente a latência e o custo ao reutilizar o contexto processado.</p>
                         <a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/context-cache/context-cache-overview" target="_blank" class="btn btn-sm btn-link text-primary p-0">Documentação Oficial ↗</a>
                     </div>
                 </div>
@@ -261,9 +284,7 @@
                     <div class="d-flex align-items-center mt-1">
                         <small class="text-muted">Hint: Obtenha um token em um terminal autenticado: <code id="gcloudCommand">gcloud auth print-access-token</code></small>
                         <button class="btn btn-sm btn-link p-0 ms-2" onclick="copyGcloudCommand()" title="Copiar comando">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-copy" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2Zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6ZM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2Z"/>
-                            </svg>
+                            <i class="bi bi-copy"></i>
                         </button>
                     </div>
                 </div>
@@ -275,6 +296,25 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Erro -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-octagon me-2"></i>Problema na API</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <h4 id="errorModalTitle" class="mb-3">Erro</h4>
+                <p id="errorModalMessage" class="text-muted mb-0"></p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Entendido</button>
             </div>
         </div>
     </div>
@@ -299,6 +339,9 @@
     const batchTokensSaved = document.getElementById('batchTokensSaved');
     const batchTotalReqs = document.getElementById('batchTotalReqs');
     const batchProgressBar = document.getElementById('batchProgressBar');
+
+    // Modais
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
 
     const CACHE_KEY = 'gemini_config_cache';
 
@@ -368,7 +411,7 @@
         navigator.clipboard.writeText(command).then(() => {
             const btn = event.currentTarget;
             const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#198754" class="bi bi-check" viewBox="0 0 16 16"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>';
+            btn.innerHTML = '<i class="bi bi-check text-success"></i>';
             setTimeout(() => {
                 btn.innerHTML = originalHTML;
             }, 2000);
@@ -408,7 +451,7 @@
             } catch (error) {
                 console.error(`Erro na requisição ${i + 1}:`, error);
                 if (count === 1) {
-                    showError(error.message);
+                    showErrorPopup(error);
                     setLoading(false);
                     return;
                 }
@@ -438,7 +481,7 @@
     async function fetchAsBase64(url) {
         try {
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`Falha ao descarregar: ${response.statusText}`);
+            if (!response.ok) throw new Error(`Status ${response.status}`);
             const blob = await response.blob();
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -447,7 +490,10 @@
                 reader.readAsDataURL(blob);
             });
         } catch (e) {
-            throw new Error(`Erro CORS ou de Rede ao aceder ao URL: ${e.message}`);
+            const err = new Error(`Arquivo Inválido ou Erro CORS`);
+            err.type = 'FILE_ERROR';
+            err.details = e.message;
+            throw err;
         }
     }
 
@@ -461,47 +507,98 @@
         const prompt = document.getElementById('promptText').value;
 
         if (!projectId || !token) {
-            throw new Error("Por favor, configure o Project ID e o Bearer Token nas Configurações.");
+            const err = new Error("Configuração Incompleta");
+            err.type = 'CONFIG_ERROR';
+            throw err;
         }
 
         const host = locationId === 'global' ? 'aiplatform.googleapis.com' : `${locationId}-aiplatform.googleapis.com`;
         const url = `https://${host}/v1/projects/${projectId}/locations/${locationId}/publishers/google/models/${modelId}:generateContent`;
 
         let filePart;
-        if (fileUriInput.startsWith('gs://')) {
-            filePart = { fileData: { mimeType: mimeType, fileUri: fileUriInput } };
-        } else if (fileUriInput.startsWith('http')) {
-            const base64Data = await fetchAsBase64(fileUriInput);
-            filePart = { inlineData: { mimeType: mimeType, data: base64Data } };
-        } else {
-            throw new Error("A URI deve começar com gs:// ou http://");
-        }
+        try {
+            if (fileUriInput.startsWith('gs://')) {
+                filePart = { fileData: { mimeType: mimeType, fileUri: fileUriInput } };
+            } else if (fileUriInput.startsWith('http')) {
+                const base64Data = await fetchAsBase64(fileUriInput);
+                filePart = { inlineData: { mimeType: mimeType, data: base64Data } };
+            } else {
+                const err = new Error("URI deve começar com gs:// ou http://");
+                err.type = 'FILE_ERROR';
+                throw err;
+            }
+        } catch (e) { throw e; }
 
         const requestBody = {
             contents: [{ role: "user", parts: [{ text: prompt }, filePart] }],
             generationConfig: { maxOutputTokens: 256, temperature: 1, topP: 0.95 }
         };
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
 
-        if ((response.status === 429 || response.status >= 500) && retryCount < 5) {
-            await sleep(Math.pow(2, retryCount) * 1000);
-            return makeRequest(retryCount + 1);
+            if ((response.status === 429 || response.status >= 500) && retryCount < 5) {
+                await sleep(Math.pow(2, retryCount) * 1000);
+                return makeRequest(retryCount + 1);
+            }
+
+            const data = await response.json();
+            rawResponse.textContent = JSON.stringify(data, null, 2);
+
+            if (!response.ok) {
+                const err = new Error(data.error?.message || `Erro ${response.status}`);
+                err.status = response.status;
+                err.type = 'API_ERROR';
+                throw err;
+            }
+
+            displayResult(data);
+            return data;
+        } catch (e) {
+            if (e.name === 'TypeError') {
+                e.type = 'CONNECTION_ERROR';
+            }
+            throw e;
+        }
+    }
+
+    function showErrorPopup(error) {
+        let title = "Erro Desconhecido";
+        let message = error.message;
+
+        if (error.type === 'CONFIG_ERROR') {
+            title = "Configuração Necessária";
+            message = "Por favor, preencha o Project ID e o Bearer Token nas Configurações.";
+        } else if (error.type === 'FILE_ERROR') {
+            title = "Arquivo Inválido";
+            message = "Não foi possível carregar o arquivo. Verifique se a URI está correta e se há permissão CORS.";
+        } else if (error.type === 'CONNECTION_ERROR') {
+            title = "Erro Conexão";
+            message = "Falha ao comunicar com o servidor. Verifique sua conexão com a internet ou o host da API.";
+        } else if (error.type === 'API_ERROR') {
+            if (error.status === 401) {
+                title = "Token Expirado";
+                message = "Seu Bearer Token expirou ou é inválido. Gere um novo token no terminal.";
+            } else if (error.status === 403) {
+                title = "Acesso Negado";
+                message = "O token não tem permissões suficientes para este projeto ou modelo.";
+            } else if (error.status === 404) {
+                title = "Recurso Não Encontrado";
+                message = "Verifique o Project ID, Location e Model ID.";
+            } else {
+                title = `Erro API (${error.status})`;
+            }
         }
 
-        const data = await response.json();
-        rawResponse.textContent = JSON.stringify(data, null, 2);
-
-        if (!response.ok) {
-            throw new Error(data.error?.message || `Erro ${response.status}`);
-        }
-
-        displayResult(data);
-        return data;
+        document.getElementById('errorModalTitle').textContent = title;
+        document.getElementById('errorModalMessage').textContent = message;
+        errorModal.show();
+        
+        statusIndicator.innerHTML = '<span class="badge bg-danger status-badge">Erro</span>';
     }
 
     function setLoading(isLoading) {
@@ -513,12 +610,6 @@
             errorContainer.style.display = "none";
             statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge">A processar...</span>';
         }
-    }
-
-    function showError(msg) {
-        errorContainer.textContent = msg;
-        errorContainer.style.display = "block";
-        statusIndicator.innerHTML = '<span class="badge bg-danger status-badge">Erro</span>';
     }
 
     function displayResult(data) {
