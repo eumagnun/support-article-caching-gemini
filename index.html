@@ -123,6 +123,21 @@
                     <button id="saveCacheBtn" class="btn btn-outline-success btn-sm">Salvar no Cache</button>
                     <button id="clearCacheBtn" class="btn btn-outline-danger btn-sm">Limpar Configurações</button>
                 </div>
+
+                <hr class="my-4">
+                
+                <div class="alert alert-info py-2 px-3" style="font-size: 0.85rem;">
+                    <h6 class="alert-heading mb-1"><i class="bi bi-info-circle me-1"></i> Sobre Implicit Cache</h6>
+                    <ul class="mb-0 ps-3">
+                        <li><strong>Threshold:</strong> Ativado apenas para prompts com <strong>+32,768 tokens</strong>.</li>
+                        <li><strong>Modelos:</strong> Suportado em Gemini 1.5 Pro e Flash (e versões posteriores).</li>
+                        <li><strong>TTL:</strong> O cache é mantido enquanto houver atividade recente (expira em ~30-60 min).</li>
+                        <li><strong>Vantagem:</strong> Reduz significativamente a latência e o custo de processamento do prompt em requisições repetitivas.</li>
+                    </ul>
+                    <div class="mt-2 text-end">
+                        <a href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/context-cache/context-cache-overview" target="_blank" class="alert-link" style="text-decoration: none;">Ver docs <small>↗</small></a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -133,8 +148,9 @@
                 
                 <div class="row">
                     <div class="col-md-7 mb-3">
-                        <label class="form-label">File URI (GS Path)</label>
-                        <input type="text" id="fileUri" class="form-control" value="gs://cloud-samples-data/generative-ai/pdf/2312.11805v3.pdf">
+                        <label class="form-label">URI do Ficheiro (GS Path ou HTTPS URL)</label>
+                        <input type="text" id="fileUri" class="form-control" value="gs://cloud-samples-data/generative-ai/pdf/2312.11805v3.pdf" placeholder="gs://... ou https://...">
+                        <small class="text-muted" style="font-size: 0.75rem;">Nota: URLs HTTPS requerem permissão CORS do servidor de origem.</small>
                     </div>
                     <div class="col-md-5 mb-3">
                         <label class="form-label">Tipo de Ficheiro (MIME)</label>
@@ -391,12 +407,29 @@
         batchTotalReqs.textContent = `${current}/${total}`;
     }
 
+    // Função para descarregar ficheiro e converter para Base64 (para links HTTP/HTTPS)
+    async function fetchAsBase64(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Falha ao descarregar: ${response.statusText}`);
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            throw new Error(`Erro CORS ou de Rede ao aceder ao URL: ${e.message}. Tente usar um GS Path ou assegure que o site permite CORS.`);
+        }
+    }
+
     async function makeRequest(retryCount = 0) {
         const projectId = document.getElementById('projectId').value;
         const locationId = document.getElementById('locationId').value.toLowerCase();
         const modelId = document.getElementById('modelId').value;
         const token = document.getElementById('accessToken').value.trim();
-        const fileUri = document.getElementById('fileUri').value;
+        const fileUriInput = document.getElementById('fileUri').value.trim();
         const mimeType = document.getElementById('mimeType').value;
         const prompt = document.getElementById('promptText').value;
 
@@ -407,18 +440,34 @@
         const host = locationId === 'global' ? 'aiplatform.googleapis.com' : `${locationId}-aiplatform.googleapis.com`;
         const url = `https://${host}/v1/projects/${projectId}/locations/${locationId}/publishers/google/models/${modelId}:generateContent`;
 
+        let filePart;
+        if (fileUriInput.startsWith('gs://')) {
+            filePart = {
+                fileData: {
+                    mimeType: mimeType,
+                    fileUri: fileUriInput
+                }
+            };
+        } else if (fileUriInput.startsWith('http')) {
+            // Só descarregamos se for o primeiro retry, para poupar largura de banda
+            const base64Data = await fetchAsBase64(fileUriInput);
+            filePart = {
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                }
+            };
+        } else {
+            throw new Error("A URI deve começar com gs:// ou http:// ou https://");
+        }
+
         const requestBody = {
             contents: [
                 {
                     role: "user",
                     parts: [
                         { text: prompt },
-                        {
-                            fileData: {
-                                mimeType: mimeType,
-                                fileUri: fileUri
-                            }
-                        }
+                        filePart
                     ]
                 }
             ],
