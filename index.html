@@ -72,6 +72,14 @@
         .bg-gemini-gradient {
             background: linear-gradient(135deg, #1a73e8 0%, #d63384 100%);
         }
+        .spin {
+            animation: bi-spin 2s infinite linear;
+            display: inline-block;
+        }
+        @keyframes bi-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(359deg); }
+        }
     </style>
 </head>
 <body>
@@ -320,7 +328,10 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
+    // Inicialização de elementos
     const sendBtn = document.getElementById('sendBtn');
     const btnText = document.getElementById('btnText');
     const btnLoader = document.getElementById('btnLoader');
@@ -333,15 +344,17 @@
     const saveCacheBtn = document.getElementById('saveCacheBtn');
     const clearCacheBtn = document.getElementById('clearCacheBtn');
     
-    // Elementos Batch
     const batchResultContainer = document.getElementById('batchResultContainer');
     const batchHitRate = document.getElementById('batchHitRate');
     const batchTokensSaved = document.getElementById('batchTokensSaved');
     const batchTotalReqs = document.getElementById('batchTotalReqs');
     const batchProgressBar = document.getElementById('batchProgressBar');
 
-    // Modais
-    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    // Inicializa Modal de Erro após o Bootstrap JS carregar
+    let errorModal;
+    window.addEventListener('load', () => {
+        errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    });
 
     const CACHE_KEY = 'gemini_config_cache';
 
@@ -358,10 +371,15 @@
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(config));
         
-        const originalText = saveCacheBtn.textContent;
-        saveCacheBtn.textContent = 'Configurações Salvas!';
+        const originalHTML = saveCacheBtn.innerHTML;
+        saveCacheBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Configurações Salvas!';
+        saveCacheBtn.classList.replace('btn-success', 'btn-outline-success');
+        saveCacheBtn.disabled = true;
+
         setTimeout(() => {
-            saveCacheBtn.textContent = originalText;
+            saveCacheBtn.innerHTML = originalHTML;
+            saveCacheBtn.classList.replace('btn-outline-success', 'btn-success');
+            saveCacheBtn.disabled = false;
         }, 2000);
     }
 
@@ -392,19 +410,13 @@
             document.getElementById('modelId').value = 'gemini-3-flash-preview';
             document.getElementById('accessToken').value = '';
             
-            const originalText = clearCacheBtn.textContent;
-            clearCacheBtn.textContent = 'Limpo!';
+            const originalHTML = clearCacheBtn.innerHTML;
+            clearCacheBtn.innerHTML = '<i class="bi bi-trash-fill me-2"></i> Limpo!';
             setTimeout(() => {
-                clearCacheBtn.textContent = originalText;
+                clearCacheBtn.innerHTML = originalHTML;
             }, 2000);
         }
     }
-
-    // Carregar cache ao iniciar
-    window.addEventListener('DOMContentLoaded', loadFromCache);
-
-    saveCacheBtn.addEventListener('click', saveToCache);
-    clearCacheBtn.addEventListener('click', clearCache);
 
     function copyGcloudCommand() {
         const command = document.getElementById('gcloudCommand').innerText;
@@ -420,7 +432,6 @@
         });
     }
 
-    // Função de sleep para o backoff exponencial
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
     async function handleBatchRequest() {
@@ -439,12 +450,11 @@
         }
 
         for (let i = 0; i < count; i++) {
-            statusIndicator.innerHTML = `<span class="badge bg-secondary status-badge">A processar ${i + 1}/${count}...</span>`;
+            statusIndicator.innerHTML = `<span class="badge bg-secondary status-badge"><i class="bi bi-arrow-repeat spin me-1"></i> A processar ${i + 1}/${count}...</span>`;
             
             try {
                 const data = await makeRequest();
                 successCount++;
-                
                 const cacheTokens = data.usageMetadata?.cachedContentTokenCount || 0;
                 totalCacheTokens += cacheTokens;
                 if (cacheTokens > 0) hits++;
@@ -456,22 +466,18 @@
                     return;
                 }
             }
-            
-            if (count > 1) {
-                updateBatchUI(i + 1, count, hits, totalCacheTokens);
-            }
+            if (count > 1) updateBatchUI(i + 1, count, hits, totalCacheTokens);
         }
         
         setLoading(false);
         if (count > 1) {
-            statusIndicator.innerHTML = `<span class="badge bg-success status-badge">Concluído (${successCount}/${count} OK)</span>`;
+            statusIndicator.innerHTML = `<span class="badge bg-success status-badge"><i class="bi bi-check-all me-1"></i> Concluído (${successCount}/${count} OK)</span>`;
         }
     }
 
     function updateBatchUI(current, total, hits, tokens) {
         const percent = Math.round((current / total) * 100);
         const hitRate = current > 0 ? Math.round((hits / current) * 100) : 0;
-        
         batchProgressBar.style.width = `${percent}%`;
         batchHitRate.textContent = `${hitRate}%`;
         batchTokensSaved.textContent = tokens.toLocaleString();
@@ -492,7 +498,6 @@
         } catch (e) {
             const err = new Error(`Arquivo Inválido ou Erro CORS`);
             err.type = 'FILE_ERROR';
-            err.details = e.message;
             throw err;
         }
     }
@@ -516,18 +521,16 @@
         const url = `https://${host}/v1/projects/${projectId}/locations/${locationId}/publishers/google/models/${modelId}:generateContent`;
 
         let filePart;
-        try {
-            if (fileUriInput.startsWith('gs://')) {
-                filePart = { fileData: { mimeType: mimeType, fileUri: fileUriInput } };
-            } else if (fileUriInput.startsWith('http')) {
-                const base64Data = await fetchAsBase64(fileUriInput);
-                filePart = { inlineData: { mimeType: mimeType, data: base64Data } };
-            } else {
-                const err = new Error("URI deve começar com gs:// ou http://");
-                err.type = 'FILE_ERROR';
-                throw err;
-            }
-        } catch (e) { throw e; }
+        if (fileUriInput.startsWith('gs://')) {
+            filePart = { fileData: { mimeType: mimeType, fileUri: fileUriInput } };
+        } else if (fileUriInput.startsWith('http')) {
+            const base64Data = await fetchAsBase64(fileUriInput);
+            filePart = { inlineData: { mimeType: mimeType, data: base64Data } };
+        } else {
+            const err = new Error("URI Inválida");
+            err.type = 'FILE_ERROR';
+            throw err;
+        }
 
         const requestBody = {
             contents: [{ role: "user", parts: [{ text: prompt }, filePart] }],
@@ -559,9 +562,7 @@
             displayResult(data);
             return data;
         } catch (e) {
-            if (e.name === 'TypeError') {
-                e.type = 'CONNECTION_ERROR';
-            }
+            if (e.name === 'TypeError') e.type = 'CONNECTION_ERROR';
             throw e;
         }
     }
@@ -578,17 +579,14 @@
             message = "Não foi possível carregar o arquivo. Verifique se a URI está correta e se há permissão CORS.";
         } else if (error.type === 'CONNECTION_ERROR') {
             title = "Erro Conexão";
-            message = "Falha ao comunicar com o servidor. Verifique sua conexão com a internet ou o host da API.";
+            message = "Falha ao comunicar com o servidor. Verifique sua conexão com a internet.";
         } else if (error.type === 'API_ERROR') {
             if (error.status === 401) {
                 title = "Token Expirado";
                 message = "Seu Bearer Token expirou ou é inválido. Gere um novo token no terminal.";
             } else if (error.status === 403) {
                 title = "Acesso Negado";
-                message = "O token não tem permissões suficientes para este projeto ou modelo.";
-            } else if (error.status === 404) {
-                title = "Recurso Não Encontrado";
-                message = "Verifique o Project ID, Location e Model ID.";
+                message = "O token não tem permissões suficientes.";
             } else {
                 title = `Erro API (${error.status})`;
             }
@@ -596,19 +594,19 @@
 
         document.getElementById('errorModalTitle').textContent = title;
         document.getElementById('errorModalMessage').textContent = message;
-        errorModal.show();
-        
-        statusIndicator.innerHTML = '<span class="badge bg-danger status-badge">Erro</span>';
+        if (errorModal) errorModal.show();
+        statusIndicator.innerHTML = '<span class="badge bg-danger status-badge"><i class="bi bi-x-circle me-1"></i> Erro</span>';
     }
 
     function setLoading(isLoading) {
         sendBtn.disabled = isLoading;
-        btnText.style.opacity = isLoading ? "0" : "1";
-        btnLoader.style.display = isLoading ? "inline-block" : "none";
         if (isLoading) {
-            resultContainer.style.display = "none";
-            errorContainer.style.display = "none";
-            statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge">A processar...</span>';
+            btnText.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>A processar...';
+            btnLoader.style.display = "inline-block";
+            statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge"><i class="bi bi-arrow-repeat spin me-1"></i> A enviar...</span>';
+        } else {
+            btnText.innerHTML = "Executar Teste";
+            btnLoader.style.display = "none";
         }
     }
 
@@ -629,9 +627,11 @@
         statusIndicator.innerHTML = '<span class="badge bg-success status-badge">Sucesso</span>';
     }
 
+    // Listeners
+    window.addEventListener('DOMContentLoaded', loadFromCache);
+    saveCacheBtn.addEventListener('click', saveToCache);
+    clearCacheBtn.addEventListener('click', clearCache);
     sendBtn.addEventListener('click', () => handleBatchRequest());
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
