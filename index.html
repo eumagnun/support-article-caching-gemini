@@ -99,17 +99,33 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h4 class="mb-0">Parâmetros da Requisição</h4>
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal">
-                        <i class="bi bi-gear-fill me-1"></i> Configurações
+                        <i class="bi bi-gear-fill me-1"></i> Configurações Base
                     </button>
                 </div>
                 
                 <div class="row">
-                    <div class="col-md-7 mb-3">
+                    <div class="col-md-12 mb-3">
                         <label class="form-label">URI do Ficheiro (GS Path ou HTTPS URL)</label>
                         <input type="text" id="fileUri" class="form-control" value="gs://cloud-samples-data/generative-ai/pdf/2312.11805v3.pdf" placeholder="gs://... ou https://...">
                         <small class="text-muted" style="font-size: 0.75rem;">Nota: URLs HTTPS requerem permissão CORS do servidor de origem.</small>
                     </div>
-                    <div class="col-md-5 mb-3">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Modelo Gemini</label>
+                        <select id="modelId" class="form-select">
+                            <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro preview</option>
+                            <option value="gemini-3-flash-preview" selected>Gemini 3 Flash preview</option>
+                            <option value="gemini-3-pro-preview">Gemini 3 Pro preview</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini-2.5-flash-preview">Gemini 2.5 Flash preview</option>
+                            <option value="gemini-2.5-flash-lite-preview">Gemini 2.5 Flash-Lite preview</option>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label class="form-label">Tipo de Ficheiro (MIME)</label>
                         <select id="mimeType" class="form-select">
                             <option value="application/pdf" selected>Documento (PDF)</option>
@@ -270,20 +286,6 @@
                             <option value="asia-northeast1">asia-northeast1 (Tokyo)</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Model ID</label>
-                    <select id="modelId" class="form-select">
-                        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro preview</option>
-                        <option value="gemini-3-flash-preview" selected>Gemini 3 Flash preview</option>
-                        <option value="gemini-3-pro-preview">Gemini 3 Pro preview</option>
-                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                        <option value="gemini-2.5-flash-preview">Gemini 2.5 Flash preview</option>
-                        <option value="gemini-2.5-flash-lite-preview">Gemini 2.5 Flash-Lite preview</option>
-                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
-                    </select>
                 </div>
 
                 <div class="mb-3">
