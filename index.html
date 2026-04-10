@@ -115,12 +115,10 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Modelo Gemini</label>
                         <select id="modelId" class="form-select">
+                            <option value="gemini-3.1-flash-lite-preview" selected>Gemini 3.1 Flash Lite preview</option>
                             <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro preview</option>
-                            <option value="gemini-3-flash-preview" selected>Gemini 3 Flash preview</option>
-                            <option value="gemini-3-pro-preview">Gemini 3 Pro preview</option>
+                            <option value="gemini-3-flash-preview">Gemini 3 Flash preview</option>
                             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                            <option value="gemini-2.5-flash-preview">Gemini 2.5 Flash preview</option>
-                            <option value="gemini-2.5-flash-lite-preview">Gemini 2.5 Flash-Lite preview</option>
                             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                             <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
                         </select>
@@ -444,12 +442,9 @@
         let totalCacheTokens = 0;
         let hits = 0;
 
-        if (count > 1) {
-            batchResultContainer.style.display = 'block';
-            updateBatchUI(0, count, 0, 0);
-        } else {
-            batchResultContainer.style.display = 'none';
-        }
+        // Sempre mostrar o container de progresso durante a execução
+        batchResultContainer.style.display = 'block';
+        updateBatchUI(0, count, 0, 0);
 
         for (let i = 0; i < count; i++) {
             statusIndicator.innerHTML = `<span class="badge bg-secondary status-badge"><i class="bi bi-arrow-repeat spin me-1"></i> A processar ${i + 1}/${count}...</span>`;
@@ -462,13 +457,11 @@
                 if (cacheTokens > 0) hits++;
             } catch (error) {
                 console.error(`Erro na requisição ${i + 1}:`, error);
-                if (count === 1) {
-                    showErrorPopup(error);
-                    setLoading(false);
-                    return;
-                }
+                showErrorPopup(error);
+                setLoading(false);
+                return;
             }
-            if (count > 1) updateBatchUI(i + 1, count, hits, totalCacheTokens);
+            updateBatchUI(i + 1, count, hits, totalCacheTokens);
         }
         
         setLoading(false);
@@ -594,6 +587,11 @@
             }
         }
 
+        // Barra de progresso em vermelho e cheia se houver erro
+        batchProgressBar.classList.remove('bg-info');
+        batchProgressBar.classList.add('bg-danger');
+        batchProgressBar.style.width = '100%';
+
         document.getElementById('errorModalTitle').textContent = title;
         document.getElementById('errorModalMessage').textContent = message;
         if (errorModal) errorModal.show();
@@ -606,6 +604,10 @@
             btnText.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>A processar...';
             btnLoader.style.display = "inline-block";
             statusIndicator.innerHTML = '<span class="badge bg-secondary status-badge"><i class="bi bi-arrow-repeat spin me-1"></i> A enviar...</span>';
+            
+            // Reset da barra de progresso ao iniciar
+            batchProgressBar.classList.remove('bg-danger');
+            batchProgressBar.classList.add('bg-info');
         } else {
             btnText.innerHTML = "Executar Teste";
             btnLoader.style.display = "none";
