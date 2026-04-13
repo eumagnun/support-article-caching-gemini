@@ -5,7 +5,7 @@ import time
 
 # --- CONFIGURAÇÕES ---
 # O ID do projeto foi atualizado para o seu ambiente de testes
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "project-poc-purple")
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "[SEU-PROJECT-ID]")
 LOCATION = "global"
 
 # Ajuste do endpoint caso a localização seja 'global'
