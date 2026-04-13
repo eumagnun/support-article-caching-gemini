@@ -8,7 +8,7 @@ import time
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "[SEU-PROJECT-ID]")
 LOCATION = "global"
 
-# Ajuste do endpoint caso a localização seja 'global'
+
 if LOCATION == "global":
     API_ENDPOINT = "aiplatform.googleapis.com"
 else:
@@ -45,17 +45,17 @@ def run_curl(method, path, data=None):
         return {"error": "Falha ao decodificar JSON", "raw": result.stdout}
 
 def test_implicit_caching():
-    print("\n--- A TESTAR CACHE IMPLÍCITO ---")
+    print("\n--- TESTANDO CACHE IMPLÍCITO ---")
     
-    # 1. Garantir que o cache está habilitado no projeto
-    print("A ativar o cache no projeto...")
+    # 1. Garantir que o cache está habilitado no projeto (ele é habilitado por padrão)
+    print("Ativando o cache no projeto...")
     run_curl("PATCH", "cacheConfig", {
         "name": f"projects/{PROJECT_ID}/locations/{LOCATION}/cacheConfig",
         "disableCache": False
     })
 
     # 2. Enviar requisições repetidas com o mesmo prefixo
-    # Incluindo um PDF e texto longo para garantir que passamos os 2048 tokens
+    # Incluindo um PDF e texto longo para garantir que passamos do limite minímo de tokens
     payload = {
         "contents": [{
             "role": "user",
@@ -86,15 +86,15 @@ def test_implicit_caching():
         print(f"Tokens em cache: {cached_tokens}")
         
         if cached_tokens > 0:
-            print("✓ Cache hit detetado no cache implícito!")
+            print("✓ Cache hit detectado no cache implícito!")
             break
         time.sleep(1)
 
 def test_explicit_caching():
-    print("\n--- A TESTAR CACHE EXPLÍCITO ---")
+    print("\n--- TESTANDO CACHE EXPLÍCITO ---")
 
     # 1. Criar o Context Cache
-    print("A criar cache explícito...")
+    print("Criando cache explícito...")
     cache_config = {
         "model": f"projects/{PROJECT_ID}/locations/{LOCATION}/publishers/google/models/{MODEL_ID}",
         "contents": [{
@@ -117,7 +117,7 @@ def test_explicit_caching():
     print(f"Cache criado com sucesso: {cache_name}")
 
     # 2. Usar o Cache para gerar conteúdo
-    print("A enviar pergunta usando o cache criado...")
+    print("Enviando pergunta usando o cache criado...")
     query_payload = {
         "contents": [{
             "role": "user",
@@ -139,11 +139,11 @@ def test_explicit_caching():
         print(f"Tokens em cache utilizados: {usage.get('cachedContentTokenCount')}")
 
     # 3. Atualizar TTL do cache
-    print("A atualizar o tempo de expiração (TTL)...")
+    print("Atualizando o tempo de expiração (TTL)...")
     run_curl("PATCH", cache_name, {"ttl": "3600s"})
 
     # 4. Eliminar o cache
-    print("Limpeza: A eliminar o cache...")
+    print("Limpeza: Eliminando o cache...")
     run_curl("DELETE", cache_name)
     print("Cache eliminado.")
 
